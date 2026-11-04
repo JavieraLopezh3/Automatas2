@@ -1,0 +1,23 @@
+ANALIZADOR - Lenguajes y Automatas II  (proyecto NetBeans)
+
+COMO USARLO
+ 1. NetBeans -> File -> Open Project... -> selecciona la carpeta "Analizador" -> Open Project.
+ 2. Boton derecho sobre el proyecto -> Run  (o F6).
+ 3. En la ventana: "Abrir archivos" (elige los tuyos) o "Ejemplos" -> "Analizar" (F5).
+    Elige la direccion de lectura en el selector "Lectura": Descendente, Ascendente o Ambas.
+
+USO DE LA INTERFAZ
+ - El editor colorea el codigo mientras escribes y puedes editar antes de analizar.
+ - Las lineas con error quedan marcadas en rojo (aviso en ambar) con una barra en el margen.
+ - Haz clic en una fila de las tablas de errores o de tokens para saltar a esa linea del archivo.
+ - Abajo aparece el veredicto de cada archivo: Congruente / No congruente / n errores.
+ - Atajos: F5 o Ctrl+Enter analiza, Ctrl+O abre, Ctrl+N archivo nuevo, Ctrl+Z / Ctrl+Y deshacer y rehacer.
+
+REQUISITOS
+ - JDK 17 o superior (NetBeans -> Tools -> Java Platforms para ver/cambiar).
+ - Si NetBeans pregunta por archivos del proyecto (build-impl.xml), deja que los genere: es normal.
+
+Si tu JDK es 11 o menor: clic derecho en el proyecto -> Properties -> Sources -> Source/Binary Format,
+y sube a un JDK 17+ en Libraries -> Java Platform.
+
+Detalle de los cambios: CAMBIOS_ANALISIS.md
