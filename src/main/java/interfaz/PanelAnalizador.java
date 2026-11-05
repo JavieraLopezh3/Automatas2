@@ -57,6 +57,9 @@ import sintactico.NodoAst;
 import sintactico.ResultadoAnalisisSintactico;
 import sintactico.ResultadoAscendente;
 import intermediario.GeneradorIntermedio;
+import intermediario.GeneradorEnsamblador;
+import intermediario.OptimizadorCuadruplos;
+import intermediario.GeneradorEjecutable;
 import tokens.CategoriaComponente;
 import tokens.ComponenteLexico;
 
@@ -67,6 +70,7 @@ public final class PanelAnalizador extends JPanel {
     private final AnalizadorSintactico analizadorDescendente = new AnalizadorSintactico();
     private final AnalizadorAscendente analizadorAscendente = new AnalizadorAscendente();
     private final AnalizadorSemantico analizadorSemantico = new AnalizadorSemantico();
+    private javax.swing.JComboBox<GeneradorEnsamblador.TargetOS> selectorOS;
 
     private final Segmentado lectura = new Segmentado(2,
             new String[] { "↓ Descendente", "↑ Ascendente", "Ambas" },
@@ -86,6 +90,7 @@ public final class PanelAnalizador extends JPanel {
     private final ArbolAst arbol = new ArbolAst();
     private final ArbolSemantico arbolSemantico = new ArbolSemantico(this::irA);
     private final javax.swing.JTextArea tCuadruplos = new javax.swing.JTextArea();
+    private final javax.swing.JTextArea tEnsamblador = new javax.swing.JTextArea();
     private final TablaResultados tTokens;
     private final TablaResultados tLexicos;
     private final TablaResultados tSintacticos;
@@ -140,23 +145,31 @@ public final class PanelAnalizador extends JPanel {
         etiquetaLectura.setFont(Tema.ui(Font.PLAIN, 13f));
         etiquetaLectura.setForeground(Tema.PIZARRA);
 
-        barra.add(fila(16, titulo, separadorVertical(), etiquetaLectura, lectura), BorderLayout.WEST);
+        selectorOS = new javax.swing.JComboBox<>(GeneradorEnsamblador.TargetOS.values());
+        selectorOS.setBackground(Tema.SUPERFICIE);
+        selectorOS.setForeground(Tema.TINTA);
+        selectorOS.setFont(Tema.ui(Font.PLAIN, 12f));
+
+        barra.add(fila(16, titulo, separadorVertical(), etiquetaLectura, lectura, Box.createHorizontalStrut(10), new JLabel("OS:"), selectorOS), BorderLayout.WEST);
 
         Boton nuevo = new Boton("Nuevo", Boton.Tipo.TEXTO);
         Boton ejemplos = new Boton("Ejemplos", Boton.Tipo.TEXTO);
         Boton limpiar = new Boton("Limpiar", Boton.Tipo.TEXTO);
         Boton abrir = new Boton("Abrir archivos", Boton.Tipo.SECUNDARIO);
         Boton analizar = new Boton("Analizar", Boton.Tipo.PRIMARIO);
+        Boton ejecutar = new Boton("Ejecutar", Boton.Tipo.PRIMARIO);
         nuevo.setToolTipText("Archivo en blanco (Ctrl+N)");
         ejemplos.setToolTipText("Carga la carpeta codigos_prueba");
         abrir.setToolTipText("Elige archivos de tu equipo (Ctrl+O)");
         analizar.setToolTipText("Analiza todos los archivos abiertos (F5)");
+        ejecutar.setToolTipText("Genera el binario ejecutable para Linux");
         nuevo.addActionListener(e -> nuevoArchivo());
         ejemplos.addActionListener(e -> cargarEjemplos());
         limpiar.addActionListener(e -> limpiarTodo());
         abrir.addActionListener(e -> abrirArchivos());
         analizar.addActionListener(e -> analizar());
-        barra.add(fila(6, nuevo, ejemplos, limpiar, Box.createHorizontalStrut(6), abrir, analizar), BorderLayout.EAST);
+        ejecutar.addActionListener(e -> generarEjecutable());
+        barra.add(fila(6, nuevo, ejemplos, limpiar, Box.createHorizontalStrut(6), abrir, analizar, ejecutar), BorderLayout.EAST);
         return barra;
     }
 
@@ -210,15 +223,22 @@ public final class PanelAnalizador extends JPanel {
         pestanasResultado.addTab("", new javax.swing.JScrollPane(tCuadruplos));
         pestanasResultado.setTabComponentAt(2, new PestanasUI.Cabecera(pestanasResultado, "Cuádruplos", false, null));
         
+        tEnsamblador.setEditable(false);
+        tEnsamblador.setFont(new Font("Monospaced", Font.PLAIN, 13));
+        tEnsamblador.setBackground(Tema.FONDO);
+        tEnsamblador.setForeground(Tema.TINTA);
+        pestanasResultado.addTab("", new javax.swing.JScrollPane(tEnsamblador));
+        pestanasResultado.setTabComponentAt(3, new PestanasUI.Cabecera(pestanasResultado, "Ensamblador", false, null));
+        
         pestanasResultado.addTab("", tTokens);
         cabTokens = new PestanasUI.Cabecera(pestanasResultado, "Tokens", false, null);
-        pestanasResultado.setTabComponentAt(3, cabTokens);
+        pestanasResultado.setTabComponentAt(4, cabTokens);
         pestanasResultado.addTab("", tLexicos);
         cabLexicos = new PestanasUI.Cabecera(pestanasResultado, "Errores léxicos", false, null);
-        pestanasResultado.setTabComponentAt(4, cabLexicos);
+        pestanasResultado.setTabComponentAt(5, cabLexicos);
         pestanasResultado.addTab("", tSintacticos);
         cabSintacticos = new PestanasUI.Cabecera(pestanasResultado, "Errores sintácticos", false, null);
-        pestanasResultado.setTabComponentAt(5, cabSintacticos);
+        pestanasResultado.setTabComponentAt(6, cabSintacticos);
 
         JSplitPane division = new JSplitPane(JSplitPane.HORIZONTAL_SPLIT, izquierda, pestanasResultado) {
             private boolean inicial = true;
@@ -444,6 +464,7 @@ public final class PanelAnalizador extends JPanel {
         arbol.limpiar();
         arbolSemantico.limpiar();
         tCuadruplos.setText("");
+        tEnsamblador.setText("");
         tTokens.limpiar();
         tLexicos.limpiar();
         tSintacticos.limpiar();
@@ -586,19 +607,26 @@ public final class PanelAnalizador extends JPanel {
             if (raiz != null) {
                 GeneradorIntermedio gen = new GeneradorIntermedio();
                 gen.generar(raiz);
-                tCuadruplos.append("--- Archivo: " + nombre + " ---\n");
+                List<intermediario.Cuadruplo> cuadsOriginales = gen.getQuadruples();
                 
-                java.io.StringWriter sw = new java.io.StringWriter();
-                java.io.PrintWriter pw = new java.io.PrintWriter(sw);
-                // Redirigimos la salida de imprimirCuadruplos al TextArea
-                // Nota: Como imprimirCuadruplos usa System.out, vamos a extraer la lista y formatearla
-                List<intermediario.Cuadruplo> cuads = gen.getQuadruples();
+                // --- OPTIMIZACIÓN ---
+                OptimizadorCuadruplos optimizador = new OptimizadorCuadruplos();
+                List<intermediario.Cuadruplo> cuads = optimizador.optimizar(cuadsOriginales);
+                
+                tCuadruplos.append("--- Archivo: " + nombre + " (Optimizado) ---\n");
+                
                 tCuadruplos.append(String.format("%-10s %-10s %-10s %-10s\n", "Op", "Arg1", "Arg2", "Result"));
                 tCuadruplos.append("--------------------------------------------------\n");
                 for (intermediario.Cuadruplo c : cuads) {
                     tCuadruplos.append(c.toString() + "\n");
                 }
                 tCuadruplos.append("\n");
+
+                // Generación de Código Objetivo (Ensamblador x86) usando cuádruplos optimizados
+                GeneradorEnsamblador genAsm = new GeneradorEnsamblador();
+                String asmCode = genAsm.generar(cuads, (GeneradorEnsamblador.TargetOS) selectorOS.getSelectedItem());
+                tEnsamblador.append("--- Archivo: " + nombre + " ---\n");
+                tEnsamblador.append(asmCode + "\n");
             }
 
             int vistos = erroresVistos.getOrDefault(nombre, 0);
@@ -647,6 +675,35 @@ public final class PanelAnalizador extends JPanel {
         } else {
             pestanasResultado.setSelectedIndex(0);
         }
+    }
+
+    private void generarEjecutable() {
+        if (editores.isEmpty()) {
+            JOptionPane.showMessageDialog(this, "Primero abre o escribe un archivo.", "Nada que ejecutar",
+                    JOptionPane.INFORMATION_MESSAGE);
+            return;
+        }
+        
+        String textoAsm = tEnsamblador.getText();
+        if (textoAsm == null || textoAsm.trim().isEmpty()) {
+            JOptionPane.showMessageDialog(this, "No hay código ensamblador generado. Pulsa 'Analizar' primero.", 
+                    "Sin código", JOptionPane.WARNING_MESSAGE);
+            return;
+        }
+
+        // Usamos el nombre del archivo actual para el ejecutable
+        String nombre = ultimaClave().split("\\.")[0];
+        GeneradorEjecutable genExe = new GeneradorEjecutable();
+        
+        String resultado;
+        if (selectorOS.getSelectedItem() == GeneradorEnsamblador.TargetOS.LINUX) {
+            resultado = genExe.generarEjecutableLinux(textoAsm, nombre);
+        } else {
+            resultado = genExe.generarEjecutableWindows(textoAsm, nombre);
+        }
+        
+        JOptionPane.showMessageDialog(this, resultado, "Generación de Ejecutable", 
+                resultado.contains("exitosamente") ? JOptionPane.INFORMATION_MESSAGE : JOptionPane.ERROR_MESSAGE);
     }
 
     private static void marcar(Map<String, Map<Integer, Boolean>> marcas, String archivo, int linea, boolean error) {
