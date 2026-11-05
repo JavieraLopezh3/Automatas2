@@ -6,6 +6,10 @@ import java.util.stream.Collectors;
 import tokens.ComponenteLexico;
 import tokens.TipoComponente;
 
+/**
+ * Analizador sintáctico encargado de validar la estructura del código
+ * basándose en la gramática definida. Construye un AST (Árbol de Sintaxis Abstracta).
+ */
 public final class AnalizadorSintactico {
 
     private static final int ERR_SE_ESPERABA = 601;
@@ -487,94 +491,94 @@ public final class AnalizadorSintactico {
         return nodo;
     }
 
-    private NodoAst analizarBloque() {
-        NodoAst nodo = new NodoAst("Bloque");
+  private NodoAst analizarBloque() {
+    NodoAst nodo = new NodoAst("Bloque");
 
-        if (!esActual(TipoComponente.LLAVE_ABRE)) {
-            agregarError(ERR_TOKEN_INESPERADO, actual(), "Se esperaba '{'");
-            return nodo;
-        }
-        nodo.agregarHijo(new NodoAst(actual()));
-        consumir();
-
-        nivelActual++;
-        while (!fueraDeRango() && !esActual(TipoComponente.LLAVE_CIERRA)) {
-            int inicio = pos;
-            int errAntes = errores.size();
-            nodo.agregarHijo(analizarElementoPrograma());
-            recuperar(inicio, errAntes);
-        }
-        nivelActual--;
-
-        if (!esActual(TipoComponente.LLAVE_CIERRA)) {
-            agregarError(ERR_TOKEN_INESPERADO, actual(), "Se esperaba '}'");
-            return nodo;
-        }
-        nodo.agregarHijo(new NodoAst(actual()));
-        consumir();
-
-        return nodo;
+    if (!esActual(TipoComponente.LLAVE_ABRE)) {
+      agregarError(ERR_TOKEN_INESPERADO, actual(), "Se esperaba '{'");
+      return nodo;
     }
+    nodo.agregarHijo(new NodoAst(actual()));
+    consumir();
+
+    nivelActual++;
+    while (!fueraDeRango() && !esActual(TipoComponente.LLAVE_CIERRA)) {
+      int inicio = pos;
+      int errAntes = errores.size();
+      nodo.agregarHijo(analizarElementoPrograma());
+      recuperar(inicio, errAntes);
+    }
+    nivelActual--;
+
+    if (!esActual(TipoComponente.LLAVE_CIERRA)) {
+      agregarError(ERR_TOKEN_INESPERADO, actual(), "Se esperaba '}'");
+      return nodo;
+    }
+    nodo.agregarHijo(new NodoAst(actual()));
+    consumir();
+
+    return nodo;
+  }
 
     // ==================== SENTENCIAS ====================
 
-    private NodoAst analizarSentencia() {
-        if (fueraDeRango()) {
-            return new NodoAst("SentenciaVacia");
-        }
-
-        TipoComponente tipo = tipoActual();
-
-        if (tipo == TipoComponente.MIENTRAS) {
-            return analizarWhile();
-        }
-        if (tipo == TipoComponente.SI) {
-            return analizarIf();
-        }
-        if (tipo == TipoComponente.REPETIR) {
-            return analizarRepeat();
-        }
-        if (tipo == TipoComponente.FOR) {
-            return analizarFor();
-        }
-        if (tipo == TipoComponente.EXISTE) {
-            return analizarExist();
-        }
-        if (tipo == TipoComponente.RETORNAR) {
-            return analizarReturn();
-        }
-        if (esTipoDato(tipo)) {
-            NodoAst nodo = new NodoAst("Sentencia");
-            nodo.agregarHijo(analizarDeclaracionLocal());
-            esperarPuntoYComa();
-            return nodo;
-        }
-        if (tipo == TipoComponente.IDENTIFICADOR || tipo == TipoComponente.THIS) {
-            if (hayAsignacionDespues()) {
-                NodoAst nodo = new NodoAst("Sentencia");
-                nodo.agregarHijo(analizarAsignacion());
-                esperarPuntoYComa();
-                return nodo;
-            } else {
-                NodoAst nodo = new NodoAst("Sentencia");
-                nodo.agregarHijo(analizarExpresion());
-                esperarPuntoYComa();
-                return nodo;
-            }
-        }
-
-        if (esInicioExpresion(tipo)) { // sentencia-expresión que no empieza con ID/this
-            NodoAst nodo = new NodoAst("Sentencia");
-            nodo.agregarHijo(analizarExpresion());
-            esperarPuntoYComa();
-            return nodo;
-        }
-
-        agregarError(ERR_TOKEN_INESPERADO, actual(),
-                Gramatica.mensajeErrorFirst("Sentencia", Gramatica.FIRST_SENTENCIA, tipoActual()));
-        consumir();
-        return new NodoAst("SentenciaError");
+  private NodoAst analizarSentencia() {
+    if (fueraDeRango()) {
+      return new NodoAst("SentenciaVacia");
     }
+
+    TipoComponente tipo = tipoActual();
+
+    if (tipo == TipoComponente.MIENTRAS) {
+      return analizarWhile();
+    }
+    if (tipo == TipoComponente.SI) {
+      return analizarIf();
+    }
+    if (tipo == TipoComponente.REPETIR) {
+      return analizarRepeat();
+    }
+    if (tipo == TipoComponente.FOR) {
+      return analizarFor();
+    }
+    if (tipo == TipoComponente.EXISTE) {
+      return analizarExist();
+    }
+    if (tipo == TipoComponente.RETORNAR) {
+      return analizarReturn();
+    }
+    if (esTipoDato(tipo)) {
+      NodoAst nodo = new NodoAst("Sentencia");
+      nodo.agregarHijo(analizarDeclaracionLocal());
+      esperarPuntoYComa();
+      return nodo;
+    }
+    if (tipo == TipoComponente.IDENTIFICADOR || tipo == TipoComponente.THIS) {
+      if (hayAsignacionDespues()) {
+        NodoAst nodo = new NodoAst("Sentencia");
+        nodo.agregarHijo(analizarAsignacion());
+        esperarPuntoYComa();
+        return nodo;
+      } else {
+        NodoAst nodo = new NodoAst("Sentencia");
+        nodo.agregarHijo(analizarExpresion());
+        esperarPuntoYComa();
+        return nodo;
+      }
+    }
+
+    if (esInicioExpresion(tipo)) { // sentencia-expresión que no empieza con ID/this
+      NodoAst nodo = new NodoAst("Sentencia");
+      nodo.agregarHijo(analizarExpresion());
+      esperarPuntoYComa();
+      return nodo;
+    }
+
+    agregarError(ERR_TOKEN_INESPERADO, actual(),
+            Gramatica.mensajeErrorFirst("Sentencia", Gramatica.FIRST_SENTENCIA, tipoActual()));
+    consumir();
+    return new NodoAst("SentenciaError");
+  }
 
     private NodoAst analizarWhile() {
         NodoAst nodo = new NodoAst("While");
@@ -1118,8 +1122,9 @@ public final class AnalizadorSintactico {
     }
 
     private boolean mirarSiguienteEs(TipoComponente tipo) {
-        if (fueraDeRango() || pos + 1 >= tokens.size())
+        if (fueraDeRango() || pos + 1 >= tokens.size()) {
             return false;
+        }
         ComponenteLexico next = tokens.get(pos + 1);
         return next != null && next.getTipo() == tipo;
     }
@@ -1157,19 +1162,19 @@ public final class AnalizadorSintactico {
 
     /** Operadores aritméticos y relacionales válidos en expresiones */
     private boolean esOperador(TipoComponente tipo) {
-        return tipo == TipoComponente.SUMA ||
-                tipo == TipoComponente.RESTA ||
-                tipo == TipoComponente.MULTIPLICACION ||
-                tipo == TipoComponente.DIVISION ||
-                tipo == TipoComponente.MODULO ||
-                tipo == TipoComponente.IGUALDAD ||
-                tipo == TipoComponente.DIFERENTE ||
-                tipo == TipoComponente.MENOR_QUE ||
-                tipo == TipoComponente.MENOR_O_IGUAL ||
-                tipo == TipoComponente.MAYOR_QUE ||
-                tipo == TipoComponente.MAYOR_O_IGUAL ||
-                tipo == TipoComponente.Y_LOGICO ||
-                tipo == TipoComponente.O_LOGICO;
+        return tipo == TipoComponente.SUMA
+                || tipo == TipoComponente.RESTA
+                || tipo == TipoComponente.MULTIPLICACION
+                || tipo == TipoComponente.DIVISION
+                || tipo == TipoComponente.MODULO
+                || tipo == TipoComponente.IGUALDAD
+                || tipo == TipoComponente.DIFERENTE
+                || tipo == TipoComponente.MENOR_QUE
+                || tipo == TipoComponente.MENOR_O_IGUAL
+                || tipo == TipoComponente.MAYOR_QUE
+                || tipo == TipoComponente.MAYOR_O_IGUAL
+                || tipo == TipoComponente.Y_LOGICO
+                || tipo == TipoComponente.O_LOGICO;
     }
 
     /**
@@ -1211,8 +1216,9 @@ public final class AnalizadorSintactico {
     }
 
     private ComponenteLexico actual() {
-        if (fueraDeRango())
+        if (fueraDeRango()) {
             return null;
+        }
         return tokens.get(pos);
     }
 
@@ -1227,8 +1233,9 @@ public final class AnalizadorSintactico {
     }
 
     private boolean esActual(TipoComponente tipo) {
-        if (fueraDeRango())
+        if (fueraDeRango()) {
             return false;
+        }
         ComponenteLexico actual = actual();
         return actual != null && actual.getTipo() == tipo;
     }

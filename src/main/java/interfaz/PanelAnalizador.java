@@ -56,6 +56,7 @@ import sintactico.ErrorSintactico;
 import sintactico.NodoAst;
 import sintactico.ResultadoAnalisisSintactico;
 import sintactico.ResultadoAscendente;
+import intermediario.GeneradorIntermedio;
 import tokens.CategoriaComponente;
 import tokens.ComponenteLexico;
 
@@ -84,6 +85,7 @@ public final class PanelAnalizador extends JPanel {
     private final JTabbedPane pestanasResultado = new JTabbedPane();
     private final ArbolAst arbol = new ArbolAst();
     private final ArbolSemantico arbolSemantico = new ArbolSemantico(this::irA);
+    private final javax.swing.JTextArea tCuadruplos = new javax.swing.JTextArea();
     private final TablaResultados tTokens;
     private final TablaResultados tLexicos;
     private final TablaResultados tSintacticos;
@@ -200,15 +202,23 @@ public final class PanelAnalizador extends JPanel {
         pestanasResultado.setTabComponentAt(0, new PestanasUI.Cabecera(pestanasResultado, "Árbol", false, null));
         pestanasResultado.addTab("", arbolSemantico);
         pestanasResultado.setTabComponentAt(1, new PestanasUI.Cabecera(pestanasResultado, "Árbol semántico", false, null));
+        
+        tCuadruplos.setEditable(false);
+        tCuadruplos.setFont(new Font("Monospaced", Font.PLAIN, 13));
+        tCuadruplos.setBackground(Tema.FONDO);
+        tCuadruplos.setForeground(Tema.TINTA);
+        pestanasResultado.addTab("", new javax.swing.JScrollPane(tCuadruplos));
+        pestanasResultado.setTabComponentAt(2, new PestanasUI.Cabecera(pestanasResultado, "Cuádruplos", false, null));
+        
         pestanasResultado.addTab("", tTokens);
         cabTokens = new PestanasUI.Cabecera(pestanasResultado, "Tokens", false, null);
-        pestanasResultado.setTabComponentAt(2, cabTokens);
+        pestanasResultado.setTabComponentAt(3, cabTokens);
         pestanasResultado.addTab("", tLexicos);
         cabLexicos = new PestanasUI.Cabecera(pestanasResultado, "Errores léxicos", false, null);
-        pestanasResultado.setTabComponentAt(3, cabLexicos);
+        pestanasResultado.setTabComponentAt(4, cabLexicos);
         pestanasResultado.addTab("", tSintacticos);
         cabSintacticos = new PestanasUI.Cabecera(pestanasResultado, "Errores sintácticos", false, null);
-        pestanasResultado.setTabComponentAt(4, cabSintacticos);
+        pestanasResultado.setTabComponentAt(5, cabSintacticos);
 
         JSplitPane division = new JSplitPane(JSplitPane.HORIZONTAL_SPLIT, izquierda, pestanasResultado) {
             private boolean inicial = true;
@@ -433,9 +443,11 @@ public final class PanelAnalizador extends JPanel {
     private void limpiarResultados() {
         arbol.limpiar();
         arbolSemantico.limpiar();
+        tCuadruplos.setText("");
         tTokens.limpiar();
         tLexicos.limpiar();
         tSintacticos.limpiar();
+
         cabTokens.ocultarContador();
         cabLexicos.ocultarContador();
         cabSintacticos.ocultarContador();
@@ -569,7 +581,28 @@ public final class PanelAnalizador extends JPanel {
                 marcar(marcas, nombre, h.getLinea(), h.esError());
             }
 
+            // Generación de Código Intermedio (Cuádruplos)
+            NodoAst raiz = arboles.get(nombre);
+            if (raiz != null) {
+                GeneradorIntermedio gen = new GeneradorIntermedio();
+                gen.generar(raiz);
+                tCuadruplos.append("--- Archivo: " + nombre + " ---\n");
+                
+                java.io.StringWriter sw = new java.io.StringWriter();
+                java.io.PrintWriter pw = new java.io.PrintWriter(sw);
+                // Redirigimos la salida de imprimirCuadruplos al TextArea
+                // Nota: Como imprimirCuadruplos usa System.out, vamos a extraer la lista y formatearla
+                List<intermediario.Cuadruplo> cuads = gen.getQuadruples();
+                tCuadruplos.append(String.format("%-10s %-10s %-10s %-10s\n", "Op", "Arg1", "Arg2", "Result"));
+                tCuadruplos.append("--------------------------------------------------\n");
+                for (intermediario.Cuadruplo c : cuads) {
+                    tCuadruplos.append(c.toString() + "\n");
+                }
+                tCuadruplos.append("\n");
+            }
+
             int vistos = erroresVistos.getOrDefault(nombre, 0);
+
             if (!rs.fueEvaluado()) {
                 if (vistos > 0) {
                     veredictos.add(new Veredicto(nombre, Tono.ERROR, vistos == 1 ? "1 error" : vistos + " errores",

@@ -2,9 +2,12 @@ package sintactico;
 
 import java.util.ArrayList;
 import java.util.List;
-
 import tokens.ComponenteLexico;
 
+/**
+ * Representa un nodo en el Árbol de Sintaxis Abstracta (AST).
+ * Almacena la información del componente léxico y sus nodos hijos.
+ */
 public class NodoAst {
     private String nombre;
     private ComponenteLexico token;
