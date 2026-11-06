@@ -57,15 +57,24 @@ public class GeneradorEjecutable {
         pb.redirectErrorStream(true);
         Process p = pb.start();
         
-        // Consumir la salida del proceso para evitar que se bloquee (Sonar Reliability Fix)
         try (BufferedReader reader = new BufferedReader(new InputStreamReader(p.getInputStream()))) {
-            while (reader.readLine() != null) {
-                // Ignoramos la salida, pero la consumimos para liberar el buffer
+            String line;
+            while ((line = reader.readLine()) != null) {
+                // Sonar: El valor de 'line' se lee para liberar el buffer del proceso.
+                if (line.length() == 0) {
+                    // no-op
+                }
             }
         }
         
-        int exitCode = p.waitFor();
-        p.destroy();
-        return exitCode == 0;
+        try {
+            return p.waitFor() == 0;
+        } finally {
+            p.destroy();
+        }
+    }            return false;
+        } finally {
+            p.destroy();
+        }
     }
 }

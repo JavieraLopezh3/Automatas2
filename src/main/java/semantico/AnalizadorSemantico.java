@@ -2080,9 +2080,11 @@ public final class AnalizadorSemantico {
     }
 
     private NodoSemantico semRepeat(NodoAst s) {
+        if (s == null || s.getHijos() == null) return null;
         boolean esEach = false;
         boolean esWhile = false;
         for (NodoAst h : s.getHijos()) {
+            if (h == null) continue;
             if (esTok(h, TipoComponente.CADA)) {
                 esEach = true;
             } else if (esTok(h, TipoComponente.MIENTRAS)) {
@@ -2092,6 +2094,7 @@ public final class AnalizadorSemantico {
         NodoSemantico n = new NodoSemantico(Categoria.CONTROL,
                 esEach ? "repeat each" : esWhile ? "repeat while" : "repeat", null, null, primerToken(s));
         for (NodoAst h : s.getHijos()) {
+            if (h == null) continue;
             if (esNodo(h, "DeclaracionLocal")) {
                 n.agregar(semDeclaracion(h));
             } else if (esNodo(h, "Asignacion")) {
@@ -2106,11 +2109,13 @@ public final class AnalizadorSemantico {
     }
 
     private NodoSemantico semFor(NodoAst s) {
+        if (s == null || s.getHijos() == null) return null;
         NodoSemantico n = new NodoSemantico(Categoria.CONTROL, "for", null, null, primerToken(s));
         int parte = 0;
         boolean dentro = false;
         String[] roles = { "inicio", "condición", "actualización" };
         for (NodoAst h : s.getHijos()) {
+            if (h == null) continue;
             if (esTok(h, TipoComponente.PARENTESIS_ABRE) && !dentro) {
                 dentro = true;
             } else if (esTok(h, TipoComponente.PUNTO_Y_COMA)) {
