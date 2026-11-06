@@ -28,20 +28,36 @@ public class GeneradorEjecutable {
         return procesarBinario(asmCode, nombreArchivo, nasmPath, "-f", "win32", ldPath, "-m", "i386pe", ".exe");
     }
 
+    private static class ComandoResult {
+        final int exitCode;
+        final String output;
+        ComandoResult(int exitCode, String output) {
+            this.exitCode = exitCode;
+            this.output = output;
+        }
+    }
+
     private String procesarBinario(String asmCode, String nombreArchivo, String assembler, String asmFlag, String asmFormat, String linker, String linkFlag, String linkFormat, String extension) {
+        if (asmCode == null || asmCode.trim().isEmpty()) {
+            return "Error: El código ensamblador está vacío. Verifique que el análisis haya sido exitoso y sin errores.";
+        }
+        
+        String trimmedAsm = asmCode.trim();
         String asmFile = nombreArchivo + ".asm";
         String objFile = nombreArchivo + ".o";
         String exeFile = nombreArchivo + extension;
 
         try {
-            Files.write(Paths.get(asmFile), asmCode.getBytes());
+            Files.write(Paths.get(asmFile), trimmedAsm.getBytes(java.nio.charset.StandardCharsets.UTF_8));
 
-            if (!ejecutarComando(assembler, asmFlag, asmFormat, asmFile, "-o", objFile)) {
-                return "Error en el ensamblador (" + assembler + "). Verifique la instalación.";
+            ComandoResult resAsm = ejecutarComando(assembler, asmFlag, asmFormat, asmFile, "-o", objFile);
+            if (resAsm.exitCode != 0) {
+                return "Error en el ensamblador (NASM):\n" + resAsm.output;
             }
 
-            if (!ejecutarComando(linker, linkFlag, linkFormat, objFile, "-o", exeFile)) {
-                return "Error en el enlazador (" + linker + "). Verifique la instalación.";
+            ComandoResult resLd = ejecutarComando(linker, linkFlag, linkFormat, objFile, "-o", exeFile);
+            if (resLd.exitCode != 0) {
+                return "Error en el enlazador (LD):\n" + resLd.output;
             }
 
             new File(exeFile).setExecutable(true);
@@ -52,29 +68,22 @@ public class GeneradorEjecutable {
         }
     }
 
-    private boolean ejecutarComando(String... comando) throws IOException, InterruptedException {
+    private ComandoResult ejecutarComando(String... comando) throws IOException, InterruptedException {
         ProcessBuilder pb = new ProcessBuilder(comando);
         pb.redirectErrorStream(true);
         Process p = pb.start();
         
+        StringBuilder output = new StringBuilder();
         try (BufferedReader reader = new BufferedReader(new InputStreamReader(p.getInputStream()))) {
             String line;
             while ((line = reader.readLine()) != null) {
-                // Sonar: El valor de 'line' se lee para liberar el buffer del proceso.
-                if (line.length() == 0) {
-                    // no-op
-                }
+                output.append(line).append("\n");
             }
         }
         
-        try {
-            return p.waitFor() == 0;
-        } finally {
-            p.destroy();
-        }
-    }            return false;
-        } finally {
-            p.destroy();
-        }
+        int exitCode = p.waitFor();
+        p.destroy();
+        return new ComandoResult(exitCode, output.toString());
     }
 }
+

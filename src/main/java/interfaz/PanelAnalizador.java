@@ -100,6 +100,7 @@ public final class PanelAnalizador extends JPanel {
 
     // Abajo
     private final JPanel franja = new JPanel(new FlowLayout(FlowLayout.LEFT, 8, 9));
+    private final Map<String, Tono> estadosCongruencia = new HashMap<>();
 
     private File ultimoDirectorio;
 
@@ -635,18 +636,23 @@ public final class PanelAnalizador extends JPanel {
                 if (vistos > 0) {
                     veredictos.add(new Veredicto(nombre, Tono.ERROR, vistos == 1 ? "1 error" : vistos + " errores",
                             "Corrige los errores para poder evaluar la congruencia."));
+                    estadosCongruencia.put(nombre, Tono.ERROR);
                 } else {
                     veredictos.add(new Veredicto(nombre, Tono.NEUTRO, "Sin evaluar", rs.getMotivoOmision()));
+                    estadosCongruencia.put(nombre, Tono.NEUTRO);
                 }
             } else if (rs.esCongruente()) {
                 long av = rs.getCantidadAdvertencias();
                 veredictos.add(new Veredicto(nombre, Tono.OK, av == 0 ? "Congruente"
                         : "Congruente, " + av + (av == 1 ? " aviso" : " avisos"), null));
+                estadosCongruencia.put(nombre, Tono.OK);
             } else {
                 long n = rs.getCantidadErrores();
                 veredictos.add(new Veredicto(nombre, Tono.ERROR, "No congruente, " + n
                         + (n == 1 ? " error" : " errores"), "Revisa la pestaña Errores sintácticos."));
+                estadosCongruencia.put(nombre, Tono.ERROR);
             }
+        }
         }
 
         boolean varios = editores.size() > 1;
@@ -684,6 +690,15 @@ public final class PanelAnalizador extends JPanel {
             return;
         }
         
+        String nombre = ultimaClave();
+        Tono estado = estadosCongruencia.get(nombre);
+        if (estado != Tono.OK) {
+            JOptionPane.showMessageDialog(this, "El archivo '" + nombre + "' no es congruente.\n" +
+                    "Solo se pueden generar binarios de códigos sin errores semánticos.", 
+                    "Error de Congruencia", JOptionPane.ERROR_MESSAGE);
+            return;
+        }
+
         String textoAsm = tEnsamblador.getText();
         if (textoAsm == null || textoAsm.trim().isEmpty()) {
             JOptionPane.showMessageDialog(this, "No hay código ensamblador generado. Pulsa 'Analizar' primero.", 
@@ -691,15 +706,23 @@ public final class PanelAnalizador extends JPanel {
             return;
         }
 
-        // Usamos el nombre del archivo actual para el ejecutable
-        String nombre = ultimaClave().split("\\.")[0];
+        String nombreBase = nombre.split("\\.")[0];
         GeneradorEjecutable genExe = new GeneradorEjecutable();
         
+        // Configuración de rutas portables: buscar carpeta /bin en el directorio actual
+        String rutaEjecucion = System.getProperty("user.dir");
+        String rutaBin = rutaEjecucion + File.separator + "bin";
+        
+        // Verificamos si existe la carpeta bin localmente para usarla como prioridad
+        if (new File(rutaBin).exists() && new File(rutaBin).isDirectory()) {
+            genExe.configurarRutas(rutaBin);
+        }
+
         String resultado;
         if (selectorOS.getSelectedItem() == GeneradorEnsamblador.TargetOS.LINUX) {
-            resultado = genExe.generarEjecutableLinux(textoAsm, nombre);
+            resultado = genExe.generarEjecutableLinux(textoAsm, nombreBase);
         } else {
-            resultado = genExe.generarEjecutableWindows(textoAsm, nombre);
+            resultado = genExe.generarEjecutableWindows(textoAsm, nombreBase);
         }
         
         JOptionPane.showMessageDialog(this, resultado, "Generación de Ejecutable", 
