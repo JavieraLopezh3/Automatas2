@@ -1737,16 +1737,21 @@ public final class AnalizadorSemantico {
         NodoSemantico r = new NodoSemantico(Categoria.PROGRAMA, "Programa", null, archivo, primerToken(raiz));
         NodoAst base = raiz;
         List<NodoAst> internos = new ArrayList<>();
-        for (NodoAst h : raiz.getHijos()) {
-            if (h.getToken() == null) {
-                internos.add(h);
+        if (raiz != null) {
+            for (NodoAst h : raiz.getHijos()) {
+                if (h != null && h.getToken() == null) {
+                    internos.add(h);
+                }
             }
         }
-        if (internos.size() == 1 && esNodo(internos.get(0), "Programa")) {
+        if (internos.size() == 1 && internos.get(0) != null && esNodo(internos.get(0), "Programa")) {
             base = internos.get(0); // evita un "Programa" dentro de otro "Programa"
         }
-        semPrograma(base, r);
+        if (base != null) {
+            semPrograma(base, r);
+        }
         adjuntarHallazgos(r, hallazgos);
+
         if (!simbolos.isEmpty()) {
             NodoSemantico tabla = new NodoSemantico(Categoria.SIMBOLOS, "Tabla de símbolos",
                     String.valueOf(simbolos.size()), null, -1, -1);
@@ -1766,8 +1771,9 @@ public final class AnalizadorSemantico {
     }
 
     private void semPrograma(NodoAst nodo, NodoSemantico destino) {
+        if (nodo == null || nodo.getHijos() == null) return;
         for (NodoAst h : nodo.getHijos()) {
-            if (h.getToken() != null) {
+            if (h == null || h.getToken() != null) {
                 continue;
             }
             switch (h.getNombre()) {
@@ -2041,9 +2047,11 @@ public final class AnalizadorSemantico {
     }
 
     private NodoSemantico semIf(NodoAst s, String nombre) {
+        if (s == null || s.getHijos() == null) return null;
         NodoSemantico n = new NodoSemantico(Categoria.CONTROL, nombre, null, null, primerToken(s));
         boolean enElse = false;
         for (NodoAst h : s.getHijos()) {
+            if (h == null) continue;
             if (esTok(h, TipoComponente.SINO)) {
                 enElse = true;
             } else if (esNodo(h, "Expresion") && !enElse) {
@@ -2058,8 +2066,10 @@ public final class AnalizadorSemantico {
     }
 
     private NodoSemantico semCondicionYBloque(NodoAst s, String nombre) {
+        if (s == null || s.getHijos() == null) return null;
         NodoSemantico n = new NodoSemantico(Categoria.CONTROL, nombre, null, null, primerToken(s));
         for (NodoAst h : s.getHijos()) {
+            if (h == null) continue;
             if (esNodo(h, "Expresion")) {
                 n.agregar(envolver(nombre.equals("exist") ? "expresión" : "condición", exprSem.get(h), h));
             } else if (esNodo(h, "Bloque")) {
@@ -2119,9 +2129,10 @@ public final class AnalizadorSemantico {
     }
 
     private NodoSemantico semReturn(NodoAst s) {
+        if (s == null || s.getHijos() == null) return null;
         NodoAst expr = null;
         for (NodoAst h : s.getHijos()) {
-            if (esNodo(h, "Expresion")) {
+            if (h != null && esNodo(h, "Expresion")) {
                 expr = h;
             }
         }

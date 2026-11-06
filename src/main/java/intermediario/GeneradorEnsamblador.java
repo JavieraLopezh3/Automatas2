@@ -150,7 +150,7 @@ public class GeneradorEnsamblador {
     private void generarAritmetica(String instr, String a1, String a2, String res, StringBuilder asm) {
         String r1 = allocateRegister(a1, asm);
         String r2 = allocateRegister(a2, asm);
-        if (r1.equals(r2)) {
+        if (java.util.Objects.equals(r1, r2)) {
             asm.append("    push ").append(r1).append("\n");
             r2 = allocateRegister(a2, asm);
             asm.append("    pop ").append(r1).append("\n");
