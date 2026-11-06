@@ -21,52 +21,44 @@ El proyecto implementa un flujo de trabajo completo dividido en tres etapas prin
     - **Dead Code Elimination:** Eliminación de instrucciones cuyos resultados nunca se utilizan.
 
 ### 3. Backend (Generación de Código)
-- **Asignación de Registros:** Gestión eficiente del uso de registros del CPU (`EAX`, `EBX`, `ECX`, `EDX`) con estrategia de **Spilling** (desalojo a la pila).
+- **Asignación de Registros:** Gestión eficiente del uso de registros del CPU (`EAX`, `EBX`, `ECX`, `EDX`) con estrategia de **Spilling** (desalojo a la pila) para optimizar el rendimiento.
 - **Generación de Ensamblador:** Traducción de cuádruplos optimizados a mnemónicos de **x86 (NASM)**.
-- **Generación de Binario:** Integración con herramientas externas para crear ejecutables reales (`.exe` en Windows, binarios ELF en Linux).
+- **Generación de Binario:** Integración con `nasm` y `ld` para generar ejecutables reales para **Linux (ELF)** y **Windows (PE)**.
 
-## 💻 Requisitos del Sistema
+## 💻 Tecnologías Utilizadas
 
-Para ejecutar el proyecto y generar binarios, es necesario tener instalado un **JDK 17** y las siguientes herramientas según el sistema operativo:
-
-### 🐧 En Linux (Ubuntu/Debian/Arch)
-Para generar ejecutables de Linux:
-```bash
-sudo pacman -S nasm binutils  # En Arch Linux
-# o
-sudo apt-get install nasm binutils # En Ubuntu/Debian
-```
-
-### 🪟 En Windows
-Para generar ejecutables de Windows (`.exe`):
-1. **NASM:** Descargar e instalar desde [nasm.us](https://www.nasm.us/). Agregar la carpeta de instalación al `PATH` del sistema.
-2. **MinGW-w64:** Instalar la cadena de herramientas de GCC/Binutils para Windows (vía MSYS2 o standalone). Asegurarse de que `ld.exe` esté disponible en el `PATH`.
+- **Lenguaje:** Java 17
+- **Gestor de Dependencias:** Maven
+- **Arquitectura Objetivo:** x86 (32 bits)
+- **Herramientas de Ensamblado:** NASM, Binutils (LD)
+- **Interfaz Gráfica:** Java Swing
 
 ## 🚀 Instalación y Ejecución
 
-### 1. Clonar el repositorio
+### Requisitos Previos
+Para ejecutar el proyecto y generar binarios en Linux, necesitas instalar:
 ```bash
-git clone https://github.com/JavieraLopezh3/Automatas2.git
-cd Automatas2
+sudo pacman -S nasm binutils
 ```
 
-### 2. Compilar el proyecto
-Utilizando Maven:
-```bash
-mvn compile
-```
+### Compilación y Ejecución
+1. Clona el repositorio:
+   ```bash
+   git clone https://github.com/JavieraLopezh3/Automatas2.git
+   cd Automatas2
+   ```
+2. Compila el proyecto con Maven:
+   ```bash
+   mvn compile
+   ```
+3. Ejecuta la aplicación:
+   ```bash
+   java -cp target/classes principal.Principal
+   ```
 
-### 3. Ejecutar la aplicación
-```bash
-java -cp target/classes principal.Principal
-```
+## 📖 Cómo usar el Analizador
+1. **Carga un archivo** de código fuente o escribe uno nuevo.
+2. Pulsa el botón **Analizar** para generar el AST, analizar la semántica y obtener los cuádruplos optimizados.
+3. Revisa la pestaña **Ensamblador** para ver la traducción a x86.
+4. Selecciona el Sistema Operativo (**Linux** o **Windows**) y pulsa **Ejecutar** para generar el binario ejecutable.
 
-## 📖 Guía de Uso
-1. **Carga un archivo** de código fuente o escribe uno nuevo en el editor.
-2. Pulsa el botón **Analizar** para ejecutar todo el pipeline (Léxico $\rightarrow$ Sintáctico $\rightarrow$ Semántico $\rightarrow$ Optimización).
-3. Revisa la pestaña **Ensamblador** para ver el código x86 generado.
-4. Selecciona el Sistema Operativo (**Linux** o **Windows**) en el selector de la barra superior.
-5. Pulsa **Ejecutar** para generar el binario ejecutable en la carpeta del proyecto.
-
-## 📚 Referencias
-- Aho, A. V., Lam, M. S., Sethi, RB., & Ullman, J. D. (2006). *Compilers: Principles, Techniques, and Tools*. Pearson Education.
