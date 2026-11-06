@@ -23,21 +23,37 @@ public class GeneradorEnsamblador {
     private String allocateRegister(String var, StringBuilder asm) {
         if (var == null) return null;
         if (varToReg.containsKey(var)) return varToReg.get(var);
-        for (String reg : availableRegisters) {
-            if (!regToVar.containsKey(reg)) {
-                asm.append("    mov ").append(reg).append(", ").append(getStackOffset(var)).append("\n");
-                varToReg.put(var, reg);
-                regToVar.put(reg, var);
-                return reg;
-            }
+        
+        String reg = buscarRegistroLibre();
+        if (reg != null) {
+            asignarRegistro(reg, var, asm);
+            return reg;
         }
+        
+        return ejecutarSpilling(var, asm);
+    }
+
+    private String buscarRegistroLibre() {
+        for (String reg : availableRegisters) {
+            if (!regToVar.containsKey(reg)) return reg;
+        }
+        return null;
+    }
+
+    private void asignarRegistro(String reg, String var, StringBuilder asm) {
+        asm.append("    mov ").append(reg).append(", ").append(getStackOffset(var)).append("\n");
+        varToReg.put(var, reg);
+        regToVar.put(reg, var);
+    }
+
+    private String ejecutarSpilling(String var, StringBuilder asm) {
         String regToSpill = availableRegisters[0];
         String varToSpill = regToVar.get(regToSpill);
+        
         asm.append("    mov ").append(getStackOffset(varToSpill)).append(", ").append(regToSpill).append("\n");
         varToReg.remove(varToSpill);
-        regToVar.put(regToSpill, var);
-        varToReg.put(var, regToSpill);
-        asm.append("    mov ").append(regToSpill).append(", ").append(getStackOffset(var)).append("\n");
+        
+        asignarRegistro(regToSpill, var, asm);
         return regToSpill;
     }
 

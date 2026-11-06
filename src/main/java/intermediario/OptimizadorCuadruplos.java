@@ -45,38 +45,37 @@ public class OptimizadorCuadruplos {
             String a2 = c.getArg2();
             String res = c.getResult();
 
-            // Sustituir operandos por constantes ya calculadas
             if (constantes.containsKey(a1)) a1 = constantes.get(a1);
             if (constantes.containsKey(a2)) a2 = constantes.get(a2);
 
-            if (esNumero(a1) && esNumero(a2) && (op != null)) {
-                try {
-                    double v1 = Double.parseDouble(a1);
-                    double v2 = Double.parseDouble(a2);
-                    double resultado = 0;
-
-                    switch (op) {
-                        case "+": resultado = v1 + v2; break;
-                        case "-": resultado = v1 - v2; break;
-                        case "*": resultado = v1 * v2; break;
-                        case "/": resultado = v1 / v2; break;
-                        default: 
-                            optimizados.add(new Cuadruplo(op, a1, a2, res));
-                            continue;
-                    }
-                    
+            if (esNumero(a1) && esNumero(a2) && op != null) {
+                Double resultado = calcularConstante(op, a1, a2);
+                if (resultado != null) {
                     String resStr = String.valueOf(resultado);
                     constantes.put(res, resStr);
-                    // Convertimos la operación en una asignación simple de constante
                     optimizados.add(new Cuadruplo("=", resStr, null, res));
-                } catch (NumberFormatException e) {
-                    optimizados.add(new Cuadruplo(op, a1, a2, res));
+                    continue;
                 }
-            } else {
-                optimizados.add(new Cuadruplo(op, a1, a2, res));
             }
+            optimizados.add(new Cuadruplo(op, a1, a2, res));
         }
         return optimizados;
+    }
+
+    private Double calcularConstante(String op, String a1, String a2) {
+        try {
+            double v1 = Double.parseDouble(a1);
+            double v2 = Double.parseDouble(a2);
+            return switch (op) {
+                case "+" -> v1 + v2;
+                case "-" -> v1 - v2;
+                case "*" -> v1 * v2;
+                case "/" -> v2 != 0 ? v1 / v2 : null;
+                default -> null;
+            };
+        } catch (NumberFormatException e) {
+            return null;
+        }
     }
 
     /**

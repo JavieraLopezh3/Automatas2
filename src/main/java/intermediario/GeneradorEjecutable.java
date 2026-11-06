@@ -5,24 +5,27 @@ import java.nio.file.*;
 
 /**
  * Clase encargada de transformar el código ensamblador en un binario ejecutable.
- * Soporta generación para Linux (ELF) y Windows (PE).
+ * Soporta rutas configurables para herramientas externas (NASM, LD),
+ * permitiendo la distribución portable.
  */
 public class GeneradorEjecutable {
+    private String nasmPath = "nasm";
+    private String ldPath = "ld";
+    private final boolean isWindows = System.getProperty("os.name").toLowerCase().contains("win");
 
-    /**
-     * Genera el ejecutable para Linux.
-     */
-    public String generarEjecutableLinux(String asmCode, String nombreArchivo) {
-        return procesarBinario(asmCode, nombreArchivo, "nasm", "-f", "elf32", "ld", "-m", "elf_i386", ".exe");
+    public void configurarRutas(String rutaBinarios) {
+        if (rutaBinarios != null && !rutaBinarios.isEmpty()) {
+            this.nasmPath = rutaBinarios + (isWindows ? "\\" : "/") + "nasm" + (isWindows ? ".exe" : "");
+            this.ldPath = rutaBinarios + (isWindows ? "\\" : "/") + "ld" + (isWindows ? ".exe" : "");
+        }
     }
 
-    /**
-     * Genera el ejecutable para Windows.
-     * Nota: Requiere que el sistema tenga instalado nasm y el enlazador de MinGW (i686-w64-mingw32-ld).
-     */
+    public String generarEjecutableLinux(String asmCode, String nombreArchivo) {
+        return procesarBinario(asmCode, nombreArchivo, nasmPath, "-f", "elf32", ldPath, "-m", "elf_i386", ".exe");
+    }
+
     public String generarEjecutableWindows(String asmCode, String nombreArchivo) {
-        // En Windows se usa el formato win32 y un linker compatible con PE
-        return procesarBinario(asmCode, nombreArchivo, "nasm", "-f", "win32", "i686-w64-mingw32-ld", "-m", "i386pe", ".exe");
+        return procesarBinario(asmCode, nombreArchivo, nasmPath, "-f", "win32", ldPath, "-m", "i386pe", ".exe");
     }
 
     private String procesarBinario(String asmCode, String nombreArchivo, String assembler, String asmFlag, String asmFormat, String linker, String linkFlag, String linkFormat, String extension) {
@@ -31,28 +34,26 @@ public class GeneradorEjecutable {
         String exeFile = nombreArchivo + extension;
 
         try {
-            // 1. Guardar el código ensamblador
             Files.write(Paths.get(asmFile), asmCode.getBytes());
 
-            // 2. Ensamblar
-            ProcessBuilder pbAsm = new ProcessBuilder(assembler, asmFlag, asmFormat, asmFile, "-o", objFile);
-            if (pbAsm.start().waitFor() != 0) {
+            if (!ejecutarComando(assembler, asmFlag, asmFormat, asmFile, "-o", objFile)) {
                 return "Error en el ensamblador (" + assembler + "). Verifique la instalación.";
             }
 
-            // 3. Enlazar
-            ProcessBuilder pbLd = new ProcessBuilder(linker, linkFlag, linkFormat, objFile, "-o", exeFile);
-            if (pbLd.start().waitFor() != 0) {
-                return "Error en el enlazador (" + linker + "). Verifique la instalación de MinGW para Windows.";
+            if (!ejecutarComando(linker, linkFlag, linkFormat, objFile, "-o", exeFile)) {
+                return "Error en el enlazador (" + linker + "). Verifique la instalación.";
             }
 
-            File file = new File(exeFile);
-            file.setExecutable(true);
-
+            new File(exeFile).setExecutable(true);
             return "Ejecutable generado exitosamente: " + exeFile;
 
         } catch (IOException | InterruptedException e) {
             return "Error crítico: " + e.getMessage();
         }
+    }
+
+    private boolean ejecutarComando(String... comando) throws IOException, InterruptedException {
+        ProcessBuilder pb = new ProcessBuilder(comando);
+        return pb.start().waitFor() == 0;
     }
 }
