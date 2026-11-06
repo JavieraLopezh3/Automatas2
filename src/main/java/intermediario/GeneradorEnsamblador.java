@@ -58,6 +58,7 @@ public class GeneradorEnsamblador {
     }
 
     private void updateRegisterValue(String reg, String var) {
+        if (reg == null || var == null) return;
         String oldVar = regToVar.get(reg);
         if (oldVar != null) varToReg.remove(oldVar);
         regToVar.put(reg, var);
@@ -102,23 +103,34 @@ public class GeneradorEnsamblador {
     }
 
     private void traducirCuadruplo(Cuadruplo c, StringBuilder asm) {
+        if (c == null) return;
         String op = c.getOp();
         String a1 = c.getArg1();
         String a2 = c.getArg2();
         String res = c.getResult();
 
+        if (op == null) return;
+
         switch (op) {
-            case "LABEL": asm.append(res).append(":\n"); break;
-            case "GOTO": asm.append("    jmp ").append(res).append("\n"); break;
+            case "LABEL": 
+                if (res != null) asm.append(res).append(":\n"); 
+                break;
+            case "GOTO": 
+                if (res != null) asm.append("    jmp ").append(res).append("\n"); 
+                break;
             case "IF_FALSE":
                 String regCond = allocateRegister(a1, asm);
-                asm.append("    cmp ").append(regCond).append(", 0\n");
-                asm.append("    je ").append(res).append("\n");
+                if (regCond != null) {
+                    asm.append("    cmp ").append(regCond).append(", 0\n");
+                    if (res != null) asm.append("    je ").append(res).append("\n");
+                }
                 break;
             case "=":
                 String regVal = allocateRegister(a1, asm);
-                asm.append("    mov ").append(getStackOffset(res)).append(", ").append(regVal).append("\n");
-                updateRegisterValue(regVal, res);
+                if (regVal != null && res != null) {
+                    asm.append("    mov ").append(getStackOffset(res)).append(", ").append(regVal).append("\n");
+                    updateRegisterValue(regVal, res);
+                }
                 break;
             case "+": generarAritmetica("add", a1, a2, res, asm); break;
             case "-": generarAritmetica("sub", a1, a2, res, asm); break;
@@ -126,9 +138,11 @@ public class GeneradorEnsamblador {
             case "/": generarDivision(a1, a2, res, asm); break;
             case "umins":
                 String regU = allocateRegister(a1, asm);
-                asm.append("    neg ").append(regU).append("\n");
-                asm.append("    mov ").append(getStackOffset(res)).append(", ").append(regU).append("\n");
-                updateRegisterValue(regU, res);
+                if (regU != null && res != null) {
+                    asm.append("    neg ").append(regU).append("\n");
+                    asm.append("    mov ").append(getStackOffset(res)).append(", ").append(regU).append("\n");
+                    updateRegisterValue(regU, res);
+                }
                 break;
         }
     }

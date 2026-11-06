@@ -54,6 +54,18 @@ public class GeneradorEjecutable {
 
     private boolean ejecutarComando(String... comando) throws IOException, InterruptedException {
         ProcessBuilder pb = new ProcessBuilder(comando);
-        return pb.start().waitFor() == 0;
+        pb.redirectErrorStream(true);
+        Process p = pb.start();
+        
+        // Consumir la salida del proceso para evitar que se bloquee (Sonar Reliability Fix)
+        try (BufferedReader reader = new BufferedReader(new InputStreamReader(p.getInputStream()))) {
+            while (reader.readLine() != null) {
+                // Ignoramos la salida, pero la consumimos para liberar el buffer
+            }
+        }
+        
+        int exitCode = p.waitFor();
+        p.destroy();
+        return exitCode == 0;
     }
 }
