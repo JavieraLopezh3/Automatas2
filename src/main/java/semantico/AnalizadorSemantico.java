@@ -1916,9 +1916,9 @@ public final class AnalizadorSemantico {
             if (esNodo(s, "Sentencia")) {
                 for (NodoAst h : s.getHijos()) {
                     if (esNodo(h, "DeclaracionLocal")) {
-                        Object[] d = leerDeclaracion(h);
-                        if (d[1] != null) {
-                            declaradas.add(((ComponenteLexico) d[1]).getLexema() + " : " + d[0]);
+                        DeclaracionResult d = leerDeclaracion(h);
+                        if (d.id != null) {
+                            declaradas.add(d.id.getLexema() + " : " + d.tipo);
                         }
                     }
                 }
