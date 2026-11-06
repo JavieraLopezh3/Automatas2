@@ -33,7 +33,21 @@ import tokens.TipoComponente;
  */
 public final class AnalizadorSemantico {
 
+    /** Resultado de la lectura de una declaración. */
+    private static final class DeclaracionResult {
+        final Tipo tipo;
+        final ComponenteLexico id;
+        final NodoAst valor;
+
+        DeclaracionResult(Tipo tipo, ComponenteLexico id, NodoAst valor) {
+            this.tipo = tipo;
+            this.id = id;
+            this.valor = valor;
+        }
+    }
+
     // Códigos de error semántico
+
     private static final int E_NO_DECLARADO = 801;
     private static final int E_DUPLICADO = 802;
     private static final int E_TIPOS = 803;
@@ -771,7 +785,7 @@ public final class AnalizadorSemantico {
 
     private void analizarDeclaracion(NodoAst d) {
         List<NodoAst> hs = d.getHijos();
-        if (hs.isEmpty()) {
+        if (hs == null || hs.isEmpty()) {
             return;
         }
         Tipo t = leerTipo(hs.get(0));
@@ -779,11 +793,13 @@ public final class AnalizadorSemantico {
         int extra = 0;
         int asig = -1;
         for (int i = 1; i < hs.size(); i++) {
-            if (id == null && esTok(hs.get(i), TipoComponente.IDENTIFICADOR)) {
-                id = hs.get(i).getToken();
-            } else if (esTok(hs.get(i), TipoComponente.CORCHETE_ABRE)) {
+            NodoAst h = hs.get(i);
+            if (h == null) continue;
+            if (id == null && esTok(h, TipoComponente.IDENTIFICADOR)) {
+                id = h.getToken();
+            } else if (esTok(h, TipoComponente.CORCHETE_ABRE)) {
                 extra++;
-            } else if (esTok(hs.get(i), TipoComponente.ASIGNACION)) {
+            } else if (esTok(h, TipoComponente.ASIGNACION)) {
                 asig = i;
                 break;
             }
@@ -798,7 +814,16 @@ public final class AnalizadorSemantico {
         }
         declarar(id, t, "Variable local");
         if (valor != null) {
-            verificarAsignacion(t, valor, hs.get(asig).getToken(), "la inicialización de '" + id.getLexema() + "'");
+            ComponenteLexico asigTok = null;
+            if (hs != null) {
+                for (NodoAst h : hs) {
+                    if (esTok(h, TipoComponente.ASIGNACION)) {
+                        asigTok = h.getToken();
+                        break;
+                    }
+                }
+            }
+            verificarAsignacion(t, valor, asigTok, "la inicialización de '" + id.getLexema() + "'");
         }
     }
 
@@ -1906,37 +1931,39 @@ public final class AnalizadorSemantico {
     }
 
     /** @return {Tipo completo, token del nombre, nodo de la expresión inicial o null} */
-    private Object[] leerDeclaracion(NodoAst d) {
+    private DeclaracionResult leerDeclaracion(NodoAst d) {
         List<NodoAst> hs = d.getHijos();
-        if (hs.isEmpty()) {
-            return new Object[] { Tipo.DESCONOCIDO, null, null };
+        if (hs == null || hs.isEmpty()) {
+            return new DeclaracionResult(Tipo.DESCONOCIDO, null, null);
         }
         Tipo t = leerTipo(hs.get(0));
         ComponenteLexico id = null;
         int extra = 0;
         NodoAst valor = null;
         for (int i = 1; i < hs.size(); i++) {
-            if (id == null && esTok(hs.get(i), TipoComponente.IDENTIFICADOR)) {
-                id = hs.get(i).getToken();
-            } else if (esTok(hs.get(i), TipoComponente.CORCHETE_ABRE)) {
+            NodoAst h = hs.get(i);
+            if (h == null) continue;
+            if (id == null && esTok(h, TipoComponente.IDENTIFICADOR)) {
+                id = h.getToken();
+            } else if (esTok(h, TipoComponente.CORCHETE_ABRE)) {
                 extra++;
-            } else if (esTok(hs.get(i), TipoComponente.ASIGNACION)) {
+            } else if (esTok(h, TipoComponente.ASIGNACION)) {
                 if (i + 1 < hs.size() && esNodo(hs.get(i + 1), "Expresion")) {
                     valor = hs.get(i + 1);
                 }
                 break;
             }
         }
-        return new Object[] { t.arreglo(extra), id, valor };
+        return new DeclaracionResult(t != null ? t.arreglo(extra) : Tipo.DESCONOCIDO, id, valor);
     }
 
     private NodoSemantico semDeclaracion(NodoAst d) {
-        Object[] x = leerDeclaracion(d);
-        ComponenteLexico id = (ComponenteLexico) x[1];
+        DeclaracionResult res = leerDeclaracion(d);
+        ComponenteLexico id = res.id;
         NodoSemantico n = new NodoSemantico(Categoria.DECLARACION, "Declaración " + (id != null ? id.getLexema() : "?"),
-                x[0].toString(), "variable local", id != null ? id : primerToken(d));
-        if (x[2] != null) {
-            n.agregar(envolver("valor inicial", exprSem.get((NodoAst) x[2]), (NodoAst) x[2]));
+                res.tipo.toString(), "variable local", id != null ? id : primerToken(d));
+        if (res.valor != null) {
+            n.agregar(envolver("valor inicial", exprSem.get(res.valor), res.valor));
         }
         return n;
     }
