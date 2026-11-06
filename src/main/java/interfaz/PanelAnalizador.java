@@ -94,6 +94,7 @@ public final class PanelAnalizador extends JPanel {
     private final TablaResultados tTokens;
     private final TablaResultados tLexicos;
     private final TablaResultados tSintacticos;
+    private final Map<String, String> rawAsmCache = new HashMap<>();
     private PestanasUI.Cabecera cabTokens;
     private PestanasUI.Cabecera cabLexicos;
     private PestanasUI.Cabecera cabSintacticos;
@@ -469,6 +470,7 @@ public final class PanelAnalizador extends JPanel {
         tTokens.limpiar();
         tLexicos.limpiar();
         tSintacticos.limpiar();
+        rawAsmCache.clear();
 
         cabTokens.ocultarContador();
         cabLexicos.ocultarContador();
@@ -626,6 +628,7 @@ public final class PanelAnalizador extends JPanel {
                 // Generación de Código Objetivo (Ensamblador x86) usando cuádruplos optimizados
                 GeneradorEnsamblador genAsm = new GeneradorEnsamblador();
                 String asmCode = genAsm.generar(cuads, (GeneradorEnsamblador.TargetOS) selectorOS.getSelectedItem());
+                rawAsmCache.put(nombre, asmCode);
                 tEnsamblador.append("--- Archivo: " + nombre + " ---\n");
                 tEnsamblador.append(asmCode + "\n");
             }
@@ -653,8 +656,7 @@ public final class PanelAnalizador extends JPanel {
                 estadosCongruencia.put(nombre, Tono.ERROR);
             }
         }
-        }
-
+        
         boolean varios = editores.size() > 1;
         tTokens.ocultarArchivo(!varios);
         tLexicos.ocultarArchivo(!varios);
@@ -664,6 +666,7 @@ public final class PanelAnalizador extends JPanel {
         tSintacticos.terminar();
         arbol.terminar();
         arbolSemantico.terminar();
+
 
         cabTokens.contador(tTokens.filas(), false);
         cabLexicos.contador(tLexicos.filas(), tLexicos.filas() > 0);
@@ -699,9 +702,9 @@ public final class PanelAnalizador extends JPanel {
             return;
         }
 
-        String textoAsm = tEnsamblador.getText();
+        String textoAsm = rawAsmCache.get(nombre);
         if (textoAsm == null || textoAsm.trim().isEmpty()) {
-            JOptionPane.showMessageDialog(this, "No hay código ensamblador generado. Pulsa 'Analizar' primero.", 
+            JOptionPane.showMessageDialog(this, "No hay código ensamblador generado para este archivo. Pulsa 'Analizar' primero.", 
                     "Sin código", JOptionPane.WARNING_MESSAGE);
             return;
         }
